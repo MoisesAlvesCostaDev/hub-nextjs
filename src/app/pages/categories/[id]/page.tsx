@@ -15,16 +15,15 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useRouter } from "next/navigation";
 
-type Product = {
+interface IProduct {
   id: string;
   name: string;
-};
+}
 
-type FormData = {
+interface IFormData {
   name: string;
-  description: string;
-  products: Product[];
-};
+  products: IProduct[];
+}
 
 export default function EditCategory({
   categoryId,
@@ -36,9 +35,9 @@ export default function EditCategory({
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<FormData>();
+  } = useForm<IFormData>();
 
-  const [availableProducts, setAvailableProducts] = useState<Product[]>([
+  const [availableProducts, setAvailableProducts] = useState<IProduct[]>([
     { id: "1", name: "Produto 1" },
     { id: "2", name: "Produto 2" },
     { id: "3", name: "Produto 3" },
@@ -46,7 +45,7 @@ export default function EditCategory({
     { id: "5", name: "Produto 5" },
   ]);
 
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<IProduct[]>([]);
 
   useEffect(() => {
     const fetchCategoryData = async () => {
@@ -60,7 +59,6 @@ export default function EditCategory({
       };
 
       setValue("name", categoryData.name);
-      setValue("description", categoryData.description);
       setSelectedProducts(categoryData.products);
 
       setAvailableProducts((prev) =>
@@ -76,17 +74,17 @@ export default function EditCategory({
     fetchCategoryData();
   }, [setValue]);
 
-  const handleAddProduct = (product: Product) => {
+  const handleAddProduct = (product: IProduct) => {
     setAvailableProducts(availableProducts.filter((p) => p.id !== product.id));
     setSelectedProducts([...selectedProducts, product]);
   };
 
-  const handleRemoveProduct = (product: Product) => {
+  const handleRemoveProduct = (product: IProduct) => {
     setSelectedProducts(selectedProducts.filter((p) => p.id !== product.id));
     setAvailableProducts([...availableProducts, product]);
   };
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: IFormData) => {
     const finalData = {
       ...data,
       products: selectedProducts,
@@ -112,18 +110,6 @@ export default function EditCategory({
           />
           {errors.name && (
             <Typography color="error">{errors.name.message}</Typography>
-          )}
-        </Box>
-        <Box flex={1}>
-          <Typography variant="caption">Descrição</Typography>
-          <input
-            {...register("description", {
-              required: "Descrição é obrigatória",
-            })}
-            style={{ width: "100%" }}
-          />
-          {errors.description && (
-            <Typography color="error">{errors.description.message}</Typography>
           )}
         </Box>
       </Box>
