@@ -41,7 +41,7 @@ interface ICategory {
 export default function CategoriesPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<ICategory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
   const [totalItems, setTotalItems] = useState<number>(0);
@@ -109,15 +109,6 @@ export default function CategoriesPage() {
 
   const handleEditCategory = (categoryId: string): void => {
     router.push(`/pages/categories/${categoryId}`);
-  };
-
-  const handleDeleteCategory = (categoryId: string): void => {
-    if (confirm("Tem certeza que deseja deletar este item?")) {
-      setCategories(
-        categories.filter((category) => category._id !== categoryId)
-      );
-      alert(`Categoria ${categoryId} deletada!`);
-    }
   };
 
   const handleChangePage = (

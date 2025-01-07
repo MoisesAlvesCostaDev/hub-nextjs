@@ -10,13 +10,14 @@ import {
   Typography,
   IconButton,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 interface IProduct {
-  id: string;
+  _id: string;
   name: string;
 }
 
@@ -25,10 +26,10 @@ interface IFormData {
   products: IProduct[];
 }
 
-export default function EditCategory({
-  categoryId,
-}: Readonly<{ categoryId: string }>) {
+export default function EditCategory() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id;
 
   const {
     register,
@@ -37,61 +38,93 @@ export default function EditCategory({
     formState: { errors },
   } = useForm<IFormData>();
 
-  const [availableProducts, setAvailableProducts] = useState<IProduct[]>([
-    { id: "1", name: "Produto 1" },
-    { id: "2", name: "Produto 2" },
-    { id: "3", name: "Produto 3" },
-    { id: "4", name: "Produto 4" },
-    { id: "5", name: "Produto 5" },
-  ]);
-
+  const [availableProducts, setAvailableProducts] = useState<IProduct[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<IProduct[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchCategoryData = async () => {
-      const categoryData = {
-        name: "Categoria Exemplo",
-        description: "Descrição da categoria exemplo",
-        products: [
-          { id: "2", name: "Produto 2" },
-          { id: "4", name: "Produto 4" },
-        ],
-      };
+    fetchInitialData();
+  }, []);
+
+  async function fetchInitialData() {
+    setIsLoading(true);
+    try {
+      const productsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products`
+      );
+      if (!productsResponse.ok) {
+        throw new Error("Erro ao buscar produtos disponíveis");
+      }
+      const productsData = await productsResponse.json();
+
+      const categoryResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories/${id}`
+      );
+      if (!categoryResponse.ok) {
+        throw new Error("Erro ao buscar dados da categoria");
+      }
+      const categoryData = await categoryResponse.json();
 
       setValue("name", categoryData.name);
       setSelectedProducts(categoryData.products);
 
-      setAvailableProducts((prev) =>
-        prev.filter(
-          (product) =>
-            !categoryData.products.find(
-              (selected) => selected.id === product.id
-            )
-        )
+      const remainingProducts = productsData.data.filter(
+        (product: IProduct) =>
+          !categoryData.products.find(
+            (selectedProduct: IProduct) => selectedProduct._id === product._id
+          )
       );
-    };
 
-    fetchCategoryData();
-  }, [setValue]);
+      setAvailableProducts(remainingProducts);
+    } catch (error) {
+      console.error("Erro ao buscar dados iniciais:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleAddProduct = (product: IProduct) => {
-    setAvailableProducts(availableProducts.filter((p) => p.id !== product.id));
+    setAvailableProducts(
+      availableProducts.filter((p) => p._id !== product._id)
+    );
     setSelectedProducts([...selectedProducts, product]);
   };
 
   const handleRemoveProduct = (product: IProduct) => {
-    setSelectedProducts(selectedProducts.filter((p) => p.id !== product.id));
+    setSelectedProducts(selectedProducts.filter((p) => p._id !== product._id));
     setAvailableProducts([...availableProducts, product]);
   };
 
-  const onSubmit = (data: IFormData) => {
+  const onSubmit = async (data: IFormData) => {
+    const selectedProductsFormated = selectedProducts.map(
+      (product) => product._id
+    );
+
     const finalData = {
       ...data,
-      products: selectedProducts,
+      products: selectedProductsFormated,
     };
-    console.log("Categoria atualizada:", finalData);
-    alert("Categoria atualizada com sucesso!");
-    router.push("/pages/categories");
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(finalData),
+        }
+      );
+
+      if (response.ok) {
+        router.push("/pages/categories");
+      } else {
+        alert("Erro ao atualizar a categoria");
+      }
+    } catch (error) {
+      alert("Erro ao atualizar a categoria");
+    }
   };
 
   return (
@@ -114,85 +147,99 @@ export default function EditCategory({
         </Box>
       </Box>
 
-      <Box display="flex" gap={4}>
-        <Box flex={1}>
-          <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
+      {isLoading ? (
+        <Box display="flex" justifyContent="center">
+          <CircularProgress size={30} />
+        </Box>
+      ) : (
+        <Box display="flex" gap={4}>
+          <Box flex={1}>
+            <Paper elevation={2}>
+              <Typography
+                variant="subtitle2"
+                style={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Produtos Disponíveis
+              </Typography>
+            </Paper>
+            <Paper
+              elevation={2}
               style={{
-                fontWeight: "bold",
-                textAlign: "center",
+                padding: "10px",
+                maxHeight: "300px",
+                overflowY: "auto",
               }}
             >
-              Produtos Disponíveis
-            </Typography>
-          </Paper>
-          <Paper
-            elevation={2}
-            style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
-          >
-            <List>
-              {availableProducts.map((product) => (
-                <ListItem
-                  key={product.id}
-                  secondaryAction={
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleAddProduct(product)}
-                    >
-                      <AddIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={product.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Box>
+              <List>
+                {availableProducts.map((product) => (
+                  <ListItem
+                    key={product._id}
+                    secondaryAction={
+                      <IconButton
+                        color="primary"
+                        onClick={() => handleAddProduct(product)}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText
+                      primary={product.name}
+                      slotProps={{ primary: { fontSize: "small" } }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
 
-        <Box flex={1}>
-          <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
+          <Box flex={1}>
+            <Paper elevation={2}>
+              <Typography
+                variant="subtitle2"
+                style={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Produtos Selecionados
+              </Typography>
+            </Paper>
+            <Paper
+              elevation={3}
               style={{
-                fontWeight: "bold",
-                textAlign: "center",
+                padding: "10px",
+                maxHeight: "300px",
+                overflowY: "auto",
               }}
             >
-              Produtos Selecionados
-            </Typography>
-          </Paper>
-          <Paper
-            elevation={3}
-            style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
-          >
-            <List>
-              {selectedProducts.map((product) => (
-                <ListItem
-                  key={product.id}
-                  secondaryAction={
-                    <IconButton
-                      color="secondary"
-                      onClick={() => handleRemoveProduct(product)}
-                    >
-                      <RemoveIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={product.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
+              <List>
+                {selectedProducts.map((product) => (
+                  <ListItem
+                    key={product._id}
+                    secondaryAction={
+                      <IconButton
+                        color="secondary"
+                        onClick={() => handleRemoveProduct(product)}
+                      >
+                        <RemoveIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText
+                      primary={product.name}
+                      slotProps={{ primary: { fontSize: "small" } }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <Box marginTop={4} display="flex" justifyContent="space-between">
         <Button
