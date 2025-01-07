@@ -62,7 +62,7 @@ export default function CategoriesPage() {
   const handleViewProducts = (categoryId: number): void => {};
 
   const handleEditCategory = (categoryId: number): void => {
-    router.push(`/pages/categories/${categoryId}/edit`);
+    router.push(`/pages/categories/${categoryId}`);
   };
 
   const handleDeleteCategory = (categoryId: number): void => {
