@@ -22,6 +22,7 @@ import {
   INITIAL_ROWS_PER_PAGE,
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
 interface IProduct {
   _id: string;
@@ -44,6 +45,33 @@ export default function CategoriesPage() {
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchCategories();
+      } else {
+        console.error("Erro ao excluir a categoria");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o categoria", error);
+    }
+  }
 
   useEffect(() => {
     fetchCategories();
@@ -160,7 +188,10 @@ export default function CategoriesPage() {
                   </IconButton>
                   <IconButton
                     color="secondary"
-                    onClick={() => handleDeleteCategory(category._id)}
+                    onClick={() => {
+                      setSelectedId(category._id);
+                      setOpenDialog(true);
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -182,6 +213,13 @@ export default function CategoriesPage() {
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <AlertDialog
+        title="Excluir categoria"
+        text="Deseja realmente excluir a categoria?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
       />
     </div>
   );

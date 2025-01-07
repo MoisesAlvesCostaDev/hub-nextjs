@@ -22,6 +22,7 @@ import {
   INITIAL_ROWS_PER_PAGE,
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
 interface IProducts {
   _id: string;
@@ -43,6 +44,33 @@ export default function OrdersPage() {
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/orders/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchOrders();
+      } else {
+        console.error("Erro ao excluir o ordem");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o ordem", error);
+    }
+  }
 
   useEffect(() => {
     fetchOrders();
@@ -80,13 +108,6 @@ export default function OrdersPage() {
 
   const handleEditOrder = (orderId: string): void => {
     router.push(`/pages/orders/${orderId}`);
-  };
-
-  const handleDeleteOrder = (orderId: string): void => {
-    if (confirm("Tem certeza que deseja deletar este pedido?")) {
-      setOrders(orders.filter((order) => order._id !== orderId));
-      alert(`Pedido ${orderId} deletado!`);
-    }
   };
 
   const handleChangePage = (
@@ -159,7 +180,10 @@ export default function OrdersPage() {
                   </IconButton>
                   <IconButton
                     color="secondary"
-                    onClick={() => handleDeleteOrder(order._id)}
+                    onClick={() => {
+                      setSelectedId(order._id);
+                      setOpenDialog(true);
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -181,6 +205,13 @@ export default function OrdersPage() {
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <AlertDialog
+        title="Excluir Pedido"
+        text="Deseja realmente excluir o Pedido ?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
       />
     </div>
   );

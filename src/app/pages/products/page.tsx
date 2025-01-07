@@ -22,17 +22,19 @@ import {
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
 import { Category } from "@mui/icons-material";
-
-interface IProduct {
-  _id: string;
-  name: string;
-}
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
 interface ICategory {
   _id: string;
   name: string;
+}
+
+interface IProduct {
+  _id: string;
+  name: string;
   description: string;
-  categories: IProduct[];
+  price: number;
+  categories: ICategory[];
 }
 
 export default function ProductsPage() {
@@ -40,8 +42,35 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
-  const [products, setProducts] = useState<ICategory[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchProducts();
+      } else {
+        console.error("Erro ao excluir o produto");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o produto", error);
+    }
+  }
 
   useEffect(() => {
     fetchProducts();
@@ -102,6 +131,7 @@ export default function ProductsPage() {
           <TableRow>
             <StyledTableCell>Nome</StyledTableCell>
             <StyledTableCell>Descrição</StyledTableCell>
+            <StyledTableCell>Preço</StyledTableCell>
             <StyledTableCell>Categorias</StyledTableCell>
             <StyledTableCell>Ação</StyledTableCell>
           </TableRow>
@@ -120,6 +150,7 @@ export default function ProductsPage() {
               <TableRow key={product._id}>
                 <TableCell>{product.name}</TableCell>
                 <TableCell>{product.description}</TableCell>
+                <TableCell>{`R$ ${product.price}`}</TableCell>
                 <TableCell>{product.categories.length}</TableCell>
                 <TableCell sx={{ width: "20%" }}>
                   <IconButton color="default">
@@ -135,7 +166,10 @@ export default function ProductsPage() {
                   </IconButton>
                   <IconButton
                     color="secondary"
-                    onClick={() => alert(`Deletar: ${product._id}`)}
+                    onClick={() => {
+                      setSelectedId(product._id);
+                      setOpenDialog(true);
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -157,6 +191,13 @@ export default function ProductsPage() {
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <AlertDialog
+        title="Excluir produto"
+        text="Deseja realmente excluir o produto?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
       />
     </div>
   );
