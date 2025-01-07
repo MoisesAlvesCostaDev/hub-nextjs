@@ -15,50 +15,71 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useRouter } from "next/navigation";
 
-interface IProduct {
+interface ICategories {
   id: string;
   name: string;
 }
 
 interface IFormData {
   name: string;
-  products: IProduct[];
+  description: string;
+  categories: ICategories[];
+  price: number;
+  imageUrl: string | File;
 }
 
-export default function CategoryForm() {
+export default function ProductForm() {
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<IFormData>();
 
-  const [availableProducts, setAvailableProducts] = useState<IProduct[]>([
-    { id: "1", name: "Produto 1" },
-    { id: "2", name: "Produto 2" },
-    { id: "3", name: "Produto 3" },
-  ]);
+  const [availableCategories, setAvailableCategories] = useState<ICategories[]>(
+    [
+      { id: "1", name: "Categoria 1" },
+      { id: "2", name: "Categoria 2" },
+      { id: "3", name: "Categoria 3" },
+    ]
+  );
 
-  const [selectedProducts, setSelectedProducts] = useState<IProduct[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<ICategories[]>(
+    []
+  );
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const handleAddProduct = (product: IProduct) => {
-    setAvailableProducts(availableProducts.filter((p) => p.id !== product.id));
-    setSelectedProducts([...selectedProducts, product]);
+  const handleAddProduct = (product: ICategories) => {
+    setAvailableCategories(
+      availableCategories.filter((p) => p.id !== product.id)
+    );
+    setSelectedCategories([...selectedCategories, product]);
   };
 
-  const handleRemoveProduct = (product: IProduct) => {
-    setSelectedProducts(selectedProducts.filter((p) => p.id !== product.id));
-    setAvailableProducts([...availableProducts, product]);
+  const handleRemoveProduct = (product: ICategories) => {
+    setSelectedCategories(
+      selectedCategories.filter((p) => p.id !== product.id)
+    );
+    setAvailableCategories([...availableCategories, product]);
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setValue("imageUrl", file);
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
 
   const onSubmit = (data: IFormData) => {
     const finalData = {
       ...data,
-      products: selectedProducts,
+      categories: selectedCategories,
     };
-    console.log("Categoria criada:", finalData);
-    alert("Categoria criada com sucesso!");
+    console.log("Produto criado:", finalData);
+    alert("Produto criado com sucesso!");
   };
 
   return (
@@ -67,10 +88,11 @@ export default function CategoryForm() {
         display="flex"
         justifyContent="space-between"
         alignItems="center"
+        gap={2}
         marginBottom={3}
       >
-        <Box flex={1} marginRight={2}>
-          <Typography variant="caption">Nome da Categoria</Typography>
+        <Box>
+          <Typography variant="caption">Nome do Produto</Typography>
           <input
             {...register("name", { required: "Nome é obrigatório" })}
             style={{ width: "100%" }}
@@ -79,6 +101,51 @@ export default function CategoryForm() {
             <Typography color="error">{errors.name.message}</Typography>
           )}
         </Box>
+
+        <Box>
+          <Typography variant="caption">Descrição</Typography>
+          <input
+            {...register("description", {
+              required: "Descrição é obrigatória",
+            })}
+            style={{ width: "100%" }}
+          />
+          {errors.description && (
+            <Typography color="error">{errors.description.message}</Typography>
+          )}
+        </Box>
+
+        <Box>
+          <Typography variant="caption">Preço</Typography>
+          <input
+            type="number"
+            {...register("price", { required: "Preço é obrigatório" })}
+            style={{ width: "100%" }}
+          />
+          {errors.price && (
+            <Typography color="error">{errors.price.message}</Typography>
+          )}
+        </Box>
+      </Box>
+
+      <Box marginBottom={3}>
+        <Typography variant="caption">Imagem do Produto</Typography>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          style={{ display: "block" }}
+        />
+        {imagePreview && (
+          <Box marginTop={2}>
+            <Typography variant="caption">Pré-visualização:</Typography>
+            <img
+              src={imagePreview}
+              alt="Pré-visualização da imagem"
+              style={{ width: "100px", height: "100px", objectFit: "cover" }}
+            />
+          </Box>
+        )}
       </Box>
 
       <Box display="flex" gap={4}>
@@ -91,7 +158,7 @@ export default function CategoryForm() {
                 textAlign: "center",
               }}
             >
-              Produtos Disponíveis
+              Categorias Disponíveis
             </Typography>
           </Paper>
           <Paper
@@ -99,20 +166,20 @@ export default function CategoryForm() {
             style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
           >
             <List>
-              {availableProducts.map((product) => (
+              {availableCategories.map((category) => (
                 <ListItem
-                  key={product.id}
+                  key={category.id}
                   secondaryAction={
                     <IconButton
                       color="primary"
-                      onClick={() => handleAddProduct(product)}
+                      onClick={() => handleAddProduct(category)}
                     >
                       <AddIcon />
                     </IconButton>
                   }
                 >
                   <ListItemText
-                    primary={product.name}
+                    primary={category.name}
                     slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
@@ -130,7 +197,7 @@ export default function CategoryForm() {
                 textAlign: "center",
               }}
             >
-              Produtos Selecionados
+              Categorias Selecionadas
             </Typography>
           </Paper>
           <Paper
@@ -138,20 +205,20 @@ export default function CategoryForm() {
             style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
           >
             <List>
-              {selectedProducts.map((product) => (
+              {selectedCategories.map((category) => (
                 <ListItem
-                  key={product.id}
+                  key={category.id}
                   secondaryAction={
                     <IconButton
                       color="secondary"
-                      onClick={() => handleRemoveProduct(product)}
+                      onClick={() => handleRemoveProduct(category)}
                     >
                       <RemoveIcon />
                     </IconButton>
                   }
                 >
                   <ListItemText
-                    primary={product.name}
+                    primary={category.name}
                     slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
@@ -167,7 +234,7 @@ export default function CategoryForm() {
           color="secondary"
           type="button"
           onClick={() => {
-            router.push("/pages/categories");
+            router.push("/pages/products");
           }}
         >
           Cancelar

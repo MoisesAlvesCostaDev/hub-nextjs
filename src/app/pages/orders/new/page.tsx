@@ -1,6 +1,5 @@
 "use client";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Box,
@@ -15,72 +14,58 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useRouter } from "next/navigation";
 
-interface IProduct {
+interface Product {
   id: string;
   name: string;
+  price: number;
 }
 
-interface IFormData {
-  name: string;
-  products: IProduct[];
-}
-
-export default function CategoryForm() {
+export default function OrderForm() {
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<IFormData>();
-
-  const [availableProducts, setAvailableProducts] = useState<IProduct[]>([
-    { id: "1", name: "Produto 1" },
-    { id: "2", name: "Produto 2" },
-    { id: "3", name: "Produto 3" },
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([
+    { id: "1", name: "Produto 1", price: 50.0 },
+    { id: "2", name: "Produto 2", price: 30.0 },
+    { id: "3", name: "Produto 3", price: 20.0 },
   ]);
 
-  const [selectedProducts, setSelectedProducts] = useState<IProduct[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState<number>(0);
 
-  const handleAddProduct = (product: IProduct) => {
+  useEffect(() => {
+    const newTotal = selectedProducts.reduce(
+      (sum, product) => sum + product.price,
+      0
+    );
+    setTotal(newTotal);
+  }, [selectedProducts]);
+
+  const handleAddProduct = (product: Product) => {
     setAvailableProducts(availableProducts.filter((p) => p.id !== product.id));
     setSelectedProducts([...selectedProducts, product]);
   };
 
-  const handleRemoveProduct = (product: IProduct) => {
+  const handleRemoveProduct = (product: Product) => {
     setSelectedProducts(selectedProducts.filter((p) => p.id !== product.id));
     setAvailableProducts([...availableProducts, product]);
   };
 
-  const onSubmit = (data: IFormData) => {
+  const onSubmit = () => {
     const finalData = {
-      ...data,
       products: selectedProducts,
+      total,
     };
-    console.log("Categoria criada:", finalData);
-    alert("Categoria criada com sucesso!");
+    console.log("Pedido criado:", finalData);
+    alert("Pedido criado com sucesso!");
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        marginBottom={3}
-      >
-        <Box flex={1} marginRight={2}>
-          <Typography variant="caption">Nome da Categoria</Typography>
-          <input
-            {...register("name", { required: "Nome é obrigatório" })}
-            style={{ width: "100%" }}
-          />
-          {errors.name && (
-            <Typography color="error">{errors.name.message}</Typography>
-          )}
-        </Box>
-      </Box>
-
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
       <Box display="flex" gap={4}>
         <Box flex={1}>
           <Paper elevation={2}>
@@ -112,7 +97,7 @@ export default function CategoryForm() {
                   }
                 >
                   <ListItemText
-                    primary={product.name}
+                    primary={`${product.name} - R$ ${product.price.toFixed(2)}`}
                     slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
@@ -151,7 +136,7 @@ export default function CategoryForm() {
                   }
                 >
                   <ListItemText
-                    primary={product.name}
+                    primary={`${product.name} - R$ ${product.price.toFixed(2)}`}
                     slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
@@ -161,13 +146,19 @@ export default function CategoryForm() {
         </Box>
       </Box>
 
+      <Box marginTop={3}>
+        <Typography variant="h6" textAlign="right">
+          Total: R$ {total.toFixed(2)}
+        </Typography>
+      </Box>
+
       <Box marginTop={4} display="flex" justifyContent="space-between">
         <Button
           variant="contained"
           color="secondary"
           type="button"
           onClick={() => {
-            router.push("/pages/categories");
+            router.push("/pages/orders");
           }}
         >
           Cancelar
