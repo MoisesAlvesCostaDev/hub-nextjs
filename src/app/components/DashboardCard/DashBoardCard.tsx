@@ -1,3 +1,4 @@
+"use client";
 import { Card, CardContent, Typography } from "@mui/material";
 import React from "react";
 
@@ -31,7 +32,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>
-        <Typography variant="h4">{value}</Typography>
+        <Typography variant="h4"> {`R$ ${value}`}</Typography>
       </CardContent>
     </Card>
   );
