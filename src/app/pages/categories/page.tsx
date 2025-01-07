@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from "react";
 import {
   Table,
@@ -57,13 +56,13 @@ export default function CategoriesPage() {
   const router = useRouter();
 
   const handleAddCategory = (): void => {
-    router.push("/categories/new");
+    router.push("/pages/categories/new");
   };
 
   const handleViewProducts = (categoryId: number): void => {};
 
   const handleEditCategory = (categoryId: number): void => {
-    router.push(`/categories/${categoryId}/edit`);
+    router.push(`/pages/categories/${categoryId}/edit`);
   };
 
   const handleDeleteCategory = (categoryId: number): void => {

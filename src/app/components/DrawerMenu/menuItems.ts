@@ -1,6 +1,6 @@
 export const menuItems = [
-  { href: "/dashboard", text: "Dashboard", icon: "Dashboard" },
-  { href: "/products", text: "Products", icon: "Inventory" },
-  { href: "/categories", text: "Categories", icon: "Category" },
-  { href: "/orders", text: "Orders", icon: "ShoppingCart" },
+  { href: "/pages/dashboard", text: "Dashboard", icon: "Dashboard" },
+  { href: "/pages/products", text: "Products", icon: "Inventory" },
+  { href: "/pages/categories", text: "Categories", icon: "Category" },
+  { href: "/pages/orders", text: "Orders", icon: "ShoppingCart" },
 ];
