@@ -5,7 +5,7 @@ import DashboardCard from "@/app/components/DashboardCard/DashBoardCard";
 import DashBoardChart from "@/app/components/DashboardChart/DashBoardChart";
 
 export default async function Dashboard() {
-  const response = await fetch(`${process.env.API_URL}/dashboard`);
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard`);
 
   if (!response.ok) {
     return <div>Erro ao carregar os dados.</div>;
