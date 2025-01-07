@@ -40,7 +40,7 @@ interface IOrder {
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<IOrder[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
   const [totalItems, setTotalItems] = useState<number>(0);

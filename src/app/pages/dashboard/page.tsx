@@ -35,14 +35,16 @@ export default async function Dashboard() {
         <Grid2>
           <DashboardCard
             title="Valor Total"
-            value={dashboardData.totalRevenue}
+            value={`R$ ${parseFloat(dashboardData.totalRevenue).toFixed(2)}`}
             colorVariant="green"
           />
         </Grid2>
         <Grid2>
           <DashboardCard
             title="Média por Pedido"
-            value={dashboardData.averageOrderValue}
+            value={`R$ ${parseFloat(dashboardData.averageOrderValue).toFixed(
+              2
+            )}`}
             colorVariant="red"
           />
         </Grid2>
