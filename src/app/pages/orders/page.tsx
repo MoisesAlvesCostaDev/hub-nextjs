@@ -16,7 +16,6 @@ import {
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InventoryIcon from "@mui/icons-material/Inventory";
 import { useRouter } from "next/navigation";
 import {
   INITIAL_ROWS_PER_PAGE,
@@ -102,10 +101,6 @@ export default function OrdersPage() {
     router.push("/pages/orders/new");
   };
 
-  const handleViewOrders = (orderId: string): void => {
-    console.log(`Visualizando detalhes do pedido ${orderId}`);
-  };
-
   const handleEditOrder = (orderId: string): void => {
     router.push(`/pages/orders/${orderId}`);
   };
@@ -166,12 +161,6 @@ export default function OrdersPage() {
                 <TableCell>{order.total.toFixed(2)}</TableCell>
                 <TableCell>{order.products.length}</TableCell>
                 <TableCell sx={{ width: "20%" }}>
-                  <IconButton
-                    color="default"
-                    onClick={() => handleViewOrders(order._id)}
-                  >
-                    <InventoryIcon />
-                  </IconButton>
                   <IconButton
                     color="primary"
                     onClick={() => handleEditOrder(order._id)}

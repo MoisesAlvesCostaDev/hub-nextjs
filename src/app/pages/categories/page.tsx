@@ -16,7 +16,6 @@ import {
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InventoryIcon from "@mui/icons-material/Inventory";
 import { useRouter } from "next/navigation";
 import {
   INITIAL_ROWS_PER_PAGE,
@@ -103,10 +102,6 @@ export default function CategoriesPage() {
     router.push("/pages/categories/new");
   };
 
-  const handleViewProducts = (categoryId: string): void => {
-    console.log(`Visualizando produtos da categoria ${categoryId}`);
-  };
-
   const handleEditCategory = (categoryId: string): void => {
     router.push(`/pages/categories/${categoryId}`);
   };
@@ -165,12 +160,6 @@ export default function CategoriesPage() {
                 <TableCell>{category.description}</TableCell>
                 <TableCell>{category.products.length}</TableCell>
                 <TableCell sx={{ width: "20%" }}>
-                  <IconButton
-                    color="default"
-                    onClick={() => handleViewProducts(category._id)}
-                  >
-                    <InventoryIcon />
-                  </IconButton>
                   <IconButton
                     color="primary"
                     onClick={() => handleEditCategory(category._id)}

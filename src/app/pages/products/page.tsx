@@ -12,6 +12,8 @@ import {
   IconButton,
   TablePagination,
   CircularProgress,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
@@ -39,13 +41,16 @@ interface IProduct {
 
 export default function ProductsPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
   const [products, setProducts] = useState<IProduct[]>([]);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const snackBarAlertDurationInMilisecounds = 3000;
 
   const handleConfirm = () => {
     handleDeleteProduct(selectedId);
@@ -66,11 +71,24 @@ export default function ProductsPage() {
         fetchProducts();
       } else {
         console.error("Erro ao excluir o produto");
+        if (response.status === 409) {
+          setSnackbarMessage(
+            "Produto vinculado a um pedido e não pode ser excluído"
+          );
+          setSnackbarOpen(true);
+        }
       }
     } catch (error) {
       console.error("Erro ao excluir o produto", error);
+      setSnackbarMessage("Erro inesperado ao tentar excluir o produto.");
+      setSnackbarOpen(true);
     }
   }
+
+  const handleSnackbarClose = (_, reason?: string) => {
+    if (reason === "clickaway") return;
+    setSnackbarOpen(false);
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -153,9 +171,6 @@ export default function ProductsPage() {
                 <TableCell>{`R$ ${product.price}`}</TableCell>
                 <TableCell>{product.categories.length}</TableCell>
                 <TableCell sx={{ width: "20%" }}>
-                  <IconButton color="default">
-                    <Category />
-                  </IconButton>
                   <IconButton
                     color="primary"
                     onClick={() =>
@@ -199,6 +214,20 @@ export default function ProductsPage() {
         onClose={() => setOpenDialog(false)}
         onConfirm={handleConfirm}
       />
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={snackBarAlertDurationInMilisecounds}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

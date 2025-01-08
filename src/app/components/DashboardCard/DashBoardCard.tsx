@@ -2,7 +2,7 @@
 import { Card, CardContent, Typography } from "@mui/material";
 import React from "react";
 
-interface DashboardCardProps {
+export interface DashboardCardProps {
   title: string;
   value: string | number;
   colorVariant?: "blue" | "green" | "red";
