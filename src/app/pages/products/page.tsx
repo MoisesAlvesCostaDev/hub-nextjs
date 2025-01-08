@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableHead,
@@ -11,6 +11,9 @@ import {
   Box,
   IconButton,
   TablePagination,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
@@ -21,55 +24,95 @@ import {
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
 import { Category } from "@mui/icons-material";
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
-interface IProduct {
-  id: number;
+interface ICategory {
+  _id: string;
   name: string;
 }
 
-interface ICategory {
-  id: number;
+interface IProduct {
+  _id: string;
   name: string;
   description: string;
-  products: IProduct[];
+  price: number;
+  categories: ICategory[];
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<ICategory[]>([
-    {
-      id: 1,
-      name: "Produto 1",
-      description: "Description 1",
-      products: [{ id: 1, name: "Produto 1" }],
-    },
-    {
-      id: 2,
-      name: "Produto 2",
-      description: "Description 2",
-      products: [{ id: 2, name: "Produto 2" }],
-    },
-  ]);
-
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
+  const [products, setProducts] = useState<IProduct[]>([]);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const snackBarAlertDurationInMilisecounds = 3000;
 
-  const router = useRouter();
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchProducts();
+      } else {
+        console.error("Erro ao excluir o produto");
+        if (response.status === 409) {
+          setSnackbarMessage(
+            "Produto vinculado a um pedido e não pode ser excluído"
+          );
+          setSnackbarOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o produto", error);
+      setSnackbarMessage("Erro inesperado ao tentar excluir o produto.");
+      setSnackbarOpen(true);
+    }
+  }
+
+  const handleSnackbarClose = (_, reason?: string) => {
+    if (reason === "clickaway") return;
+    setSnackbarOpen(false);
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [actualPage, rowsPerPage]);
+
+  async function fetchProducts() {
+    setIsLoading(true);
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/products?page=${
+        actualPage + 1
+      }&limit=${rowsPerPage}`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      setProducts(data.data);
+      setTotalItems(data.total);
+    } else {
+      console.error("Erro ao buscar os dados do dashboard");
+    }
+    setIsLoading(false);
+  }
 
   const handleAddCategory = (): void => {
     router.push("/pages/products/new");
-  };
-
-  const handleViewProducts = (categoryId: number): void => {};
-
-  const handleEditCategory = (categoryId: number): void => {
-    router.push(`/pages/products/${categoryId}`);
-  };
-
-  const handleDeleteCategory = (categoryId: number): void => {
-    if (confirm("Tem certeza que deseja deletar este item?")) {
-      setProducts(products.filter((product) => product.id !== categoryId));
-      alert(`Categoria ${categoryId} deletada!`);
-    }
   };
 
   const handleChangePage = (
@@ -82,14 +125,9 @@ export default function ProductsPage() {
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ): void => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    setRowsPerPage(parseInt(event.target.value));
     setActualPage(0);
   };
-
-  const paginatedProducts = products.slice(
-    actualPage * rowsPerPage,
-    actualPage * rowsPerPage + rowsPerPage
-  );
 
   return (
     <div>
@@ -111,39 +149,50 @@ export default function ProductsPage() {
           <TableRow>
             <StyledTableCell>Nome</StyledTableCell>
             <StyledTableCell>Descrição</StyledTableCell>
+            <StyledTableCell>Preço</StyledTableCell>
             <StyledTableCell>Categorias</StyledTableCell>
             <StyledTableCell>Ação</StyledTableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
-          {paginatedProducts.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell>{product.name}</TableCell>
-              <TableCell>{product.description}</TableCell>
-              <TableCell>{product.products.length}</TableCell>
-              <TableCell sx={{ width: "20%" }}>
-                <IconButton
-                  color="default"
-                  onClick={() => handleViewProducts(product.id)}
-                >
-                  <Category />
-                </IconButton>
-                <IconButton
-                  color="primary"
-                  onClick={() => handleEditCategory(product.id)}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  color="secondary"
-                  onClick={() => handleDeleteCategory(product.id)}
-                >
-                  <DeleteIcon />
-                </IconButton>
+        {isLoading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={4} align="center" style={{ height: "200px" }}>
+                <CircularProgress size={30} />
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {products.map((product) => (
+              <TableRow key={product._id}>
+                <TableCell>{product.name}</TableCell>
+                <TableCell>{product.description}</TableCell>
+                <TableCell>{`R$ ${product.price}`}</TableCell>
+                <TableCell>{product.categories.length}</TableCell>
+                <TableCell sx={{ width: "20%" }}>
+                  <IconButton
+                    color="primary"
+                    onClick={() =>
+                      router.push(`/pages/products/${product._id}`)
+                    }
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    color="secondary"
+                    onClick={() => {
+                      setSelectedId(product._id);
+                      setOpenDialog(true);
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        )}
       </Table>
       <TablePagination
         labelRowsPerPage={"Itens por página"}
@@ -152,12 +201,33 @@ export default function ProductsPage() {
         }
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         component="div"
-        count={products.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
+      <AlertDialog
+        title="Excluir produto"
+        text="Deseja realmente excluir o produto?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
+      />
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={snackBarAlertDurationInMilisecounds}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

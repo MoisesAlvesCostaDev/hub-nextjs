@@ -1,7 +1,8 @@
+"use client";
 import { Card, CardContent, Typography } from "@mui/material";
 import React from "react";
 
-interface DashboardCardProps {
+export interface DashboardCardProps {
   title: string;
   value: string | number;
   colorVariant?: "blue" | "green" | "red";
@@ -25,9 +26,18 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
         color: "white",
         width: "250px",
         height: "150px",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
-      <CardContent>
+      <CardContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>

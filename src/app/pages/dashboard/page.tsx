@@ -1,17 +1,20 @@
-"use client";
 import React from "react";
 import { Box, Typography, Grid2 } from "@mui/material";
 
 import DashboardCard from "@/app/components/DashboardCard/DashBoardCard";
 import DashBoardChart from "@/app/components/DashboardChart/DashBoardChart";
 
-const metrics = {
-  totalOrders: 45,
-  totalValue: 10000,
-  averageValue: 222.22,
-};
+export default async function Dashboard() {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/metrics`
+  );
 
-export default function Dashboard() {
+  if (!response.ok) {
+    return <div>Erro ao carregar os dados.</div>;
+  }
+
+  const dashboardData = await response.json();
+
   return (
     <Box p={3}>
       <Typography variant="h4" gutterBottom>
@@ -27,21 +30,23 @@ export default function Dashboard() {
         <Grid2>
           <DashboardCard
             title="Total de Pedidos"
-            value={"45"}
+            value={dashboardData.totalOrders}
             colorVariant="blue"
           />
         </Grid2>
         <Grid2>
           <DashboardCard
             title="Valor Total"
-            value="R$ 10,000"
+            value={`R$ ${parseFloat(dashboardData.totalRevenue).toFixed(2)}`}
             colorVariant="green"
           />
         </Grid2>
         <Grid2>
           <DashboardCard
             title="Média por Pedido"
-            value="R$ 222.22"
+            value={`R$ ${parseFloat(dashboardData.averageOrderValue).toFixed(
+              2
+            )}`}
             colorVariant="red"
           />
         </Grid2>

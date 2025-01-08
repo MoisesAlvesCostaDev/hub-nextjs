@@ -9,64 +9,76 @@ import {
   Typography,
   IconButton,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 interface Product {
-  id: string;
+  _id: string;
   name: string;
   price: number;
 }
 
+interface IProductData {
+  data: Product[];
+}
+
 interface Order {
-  id: string;
+  _id: string;
   products: Product[];
 }
 
-export default function EditOrderForm({
-  orderId,
-}: {
-  readonly orderId: string;
-}) {
+export default function EditOrderForm() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id;
 
-  const [availableProducts, setAvailableProducts] = useState<Product[]>([
-    { id: "1", name: "Produto 1", price: 50.0 },
-    { id: "2", name: "Produto 2", price: 30.0 },
-    { id: "3", name: "Produto 3", price: 20.0 },
-    { id: "4", name: "Produto 4", price: 40.0 },
-  ]);
-
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (order) return;
+    fetchOrderAndProducts();
+  }, []);
 
-    const fetchOrder = async () => {
-      const mockOrder: Order = {
-        id: orderId,
-        products: [
-          { id: "1", name: "Produto 1", price: 50.0 },
-          { id: "2", name: "Produto 2", price: 30.0 },
-        ],
-      };
-
-      setOrder(mockOrder);
-      setSelectedProducts(mockOrder.products);
-
-      const updatedAvailableProducts = availableProducts.filter(
-        (product) =>
-          !mockOrder.products.some((selected) => selected.id === product.id)
+  const fetchOrderAndProducts = async () => {
+    setIsLoading(true);
+    try {
+      const orderResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/orders/${id}`
       );
-      setAvailableProducts(updatedAvailableProducts);
-    };
+      if (!orderResponse.ok) {
+        throw new Error("Erro ao buscar pedido");
+      }
+      const orderData: Order = await orderResponse.json();
 
-    fetchOrder();
-  }, [orderId, order, availableProducts]);
+      const productsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products`
+      );
+      if (!productsResponse.ok) {
+        throw new Error("Erro ao buscar produtos");
+      }
+      const productsData: IProductData = await productsResponse.json();
+
+      setOrder(orderData);
+      setSelectedProducts(orderData.products);
+      setAvailableProducts(
+        productsData.data.filter(
+          (product) =>
+            !orderData.products.some((selected) => selected._id === product._id)
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+      alert("Erro ao carregar os dados.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const newTotal = selectedProducts.reduce(
@@ -77,24 +89,53 @@ export default function EditOrderForm({
   }, [selectedProducts]);
 
   const handleAddProduct = (product: Product) => {
-    setAvailableProducts(availableProducts.filter((p) => p.id !== product.id));
+    setAvailableProducts(
+      availableProducts.filter((p) => p._id !== product._id)
+    );
     setSelectedProducts([...selectedProducts, product]);
   };
 
   const handleRemoveProduct = (product: Product) => {
-    setSelectedProducts(selectedProducts.filter((p) => p.id !== product.id));
+    setSelectedProducts(selectedProducts.filter((p) => p._id !== product._id));
     setAvailableProducts([...availableProducts, product]);
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     const finalData = {
-      orderId: order?.id,
-      products: selectedProducts,
+      products: selectedProducts.map((product) => product._id),
       total,
     };
-    console.log("Pedido atualizado:", finalData);
-    alert("Pedido atualizado com sucesso!");
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/orders/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(finalData),
+        }
+      );
+
+      if (response.ok) {
+        router.push("/pages/orders");
+      } else {
+        throw new Error("Erro ao atualizar pedido");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar pedido:", error);
+      alert("Erro ao atualizar pedido.");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" marginTop={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <form
@@ -105,7 +146,7 @@ export default function EditOrderForm({
     >
       <Box marginBottom={3}>
         <Typography variant="h6">
-          ID do Pedido: {order ? order.id : "Carregando..."}
+          ID do Pedido: {order ? order._id : "Carregando..."}
         </Typography>
       </Box>
 
@@ -129,7 +170,7 @@ export default function EditOrderForm({
             <List>
               {availableProducts.map((product) => (
                 <ListItem
-                  key={product.id}
+                  key={product._id}
                   secondaryAction={
                     <IconButton
                       color="primary"
@@ -141,7 +182,6 @@ export default function EditOrderForm({
                 >
                   <ListItemText
                     primary={`${product.name} - R$ ${product.price.toFixed(2)}`}
-                    slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
               ))}
@@ -168,7 +208,7 @@ export default function EditOrderForm({
             <List>
               {selectedProducts.map((product) => (
                 <ListItem
-                  key={product.id}
+                  key={product._id}
                   secondaryAction={
                     <IconButton
                       color="secondary"
@@ -180,7 +220,6 @@ export default function EditOrderForm({
                 >
                   <ListItemText
                     primary={`${product.name} - R$ ${product.price.toFixed(2)}`}
-                    slotProps={{ primary: { fontSize: "small" } }}
                   />
                 </ListItem>
               ))}

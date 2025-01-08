@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableHead,
@@ -11,67 +11,99 @@ import {
   Box,
   IconButton,
   TablePagination,
+  CircularProgress,
 } from "@mui/material";
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InventoryIcon from "@mui/icons-material/Inventory";
 import { useRouter } from "next/navigation";
 import {
   INITIAL_ROWS_PER_PAGE,
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
 interface IProduct {
-  id: number;
+  _id: string;
   name: string;
+  price: number;
+  imageUrl: string;
 }
 
 interface ICategory {
-  id: number;
+  _id: string;
   name: string;
   description: string;
   products: IProduct[];
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<ICategory[]>([
-    {
-      id: 1,
-      name: "Category 1",
-      description: "Description 1",
-      products: [{ id: 1, name: "Product 1" }],
-    },
-    {
-      id: 2,
-      name: "Category 2",
-      description: "Description 2",
-      products: [{ id: 2, name: "Product 2" }],
-    },
-  ]);
-
+  const router = useRouter();
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const router = useRouter();
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchCategories();
+      } else {
+        console.error("Erro ao excluir a categoria");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o categoria", error);
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories();
+  }, [actualPage, rowsPerPage]);
+
+  async function fetchCategories() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories?page=${
+          actualPage + 1
+        }&limit=${rowsPerPage}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.data);
+        setTotalItems(data.total);
+      } else {
+        console.error("Erro ao buscar os dados das categorias");
+      }
+    } catch (error) {
+      console.error("Erro na chamada da API:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleAddCategory = (): void => {
     router.push("/pages/categories/new");
   };
 
-  const handleViewProducts = (categoryId: number): void => {};
-
-  const handleEditCategory = (categoryId: number): void => {
+  const handleEditCategory = (categoryId: string): void => {
     router.push(`/pages/categories/${categoryId}`);
-  };
-
-  const handleDeleteCategory = (categoryId: number): void => {
-    if (confirm("Tem certeza que deseja deletar este item?")) {
-      setCategories(
-        categories.filter((category) => category.id !== categoryId)
-      );
-      alert(`Categoria ${categoryId} deletada!`);
-    }
   };
 
   const handleChangePage = (
@@ -87,11 +119,6 @@ export default function CategoriesPage() {
     setRowsPerPage(parseInt(event.target.value, 10));
     setActualPage(0);
   };
-
-  const paginatedCategories = categories.slice(
-    actualPage * rowsPerPage,
-    actualPage * rowsPerPage + rowsPerPage
-  );
 
   return (
     <div>
@@ -117,35 +144,42 @@ export default function CategoriesPage() {
             <StyledTableCell>Ação</StyledTableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
-          {paginatedCategories.map((category) => (
-            <TableRow key={category.id}>
-              <TableCell>{category.name}</TableCell>
-              <TableCell>{category.description}</TableCell>
-              <TableCell>{category.products.length}</TableCell>
-              <TableCell sx={{ width: "20%" }}>
-                <IconButton
-                  color="default"
-                  onClick={() => handleViewProducts(category.id)}
-                >
-                  <InventoryIcon />
-                </IconButton>
-                <IconButton
-                  color="primary"
-                  onClick={() => handleEditCategory(category.id)}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  color="secondary"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  <DeleteIcon />
-                </IconButton>
+        {isLoading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={4} align="center" style={{ height: "200px" }}>
+                <CircularProgress size={30} />
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {categories.map((category) => (
+              <TableRow key={category._id}>
+                <TableCell>{category.name}</TableCell>
+                <TableCell>{category.description}</TableCell>
+                <TableCell>{category.products.length}</TableCell>
+                <TableCell sx={{ width: "20%" }}>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditCategory(category._id)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    color="secondary"
+                    onClick={() => {
+                      setSelectedId(category._id);
+                      setOpenDialog(true);
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        )}
       </Table>
       <TablePagination
         labelRowsPerPage={"Itens por página"}
@@ -154,11 +188,18 @@ export default function CategoriesPage() {
         }
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         component="div"
-        count={categories.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <AlertDialog
+        title="Excluir categoria"
+        text="Deseja realmente excluir a categoria?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
       />
     </div>
   );

@@ -1,5 +1,6 @@
-import React from "react";
-import { Box, Typography, Paper } from "@mui/material";
+"use client";
+import React, { useEffect, useState } from "react";
+import { Box, Typography, Paper, CircularProgress } from "@mui/material";
 import {
   BarChart,
   Bar,
@@ -9,30 +10,60 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
-const chartData = [
-  { date: "2023-01-01", total: 150 },
-  { date: "2023-01-02", total: 300 },
-  { date: "2023-01-03", total: 250 },
-  { date: "2023-01-04", total: 100 },
-];
+import { useTheme } from "@mui/material/styles";
 
 export default function DashBoardChart() {
+  const [chartData, setChartData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const theme = useTheme();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dailysales`
+        );
+        if (!response.ok) {
+          throw new Error("Erro ao buscar os dados da API");
+        }
+        const data = await response.json();
+        setChartData(data);
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <Box mt={4}>
       <Paper elevation={3} style={{ padding: "20px" }}>
         <Typography variant="h6" gutterBottom>
           Vendas Diárias do mês
         </Typography>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="total" fill="#1976d2" />
-          </BarChart>
-        </ResponsiveContainer>
+        {isLoading ? (
+          <Box
+            display={"flex"}
+            justifyContent={"center"}
+            alignContent={"center"}
+          >
+            <CircularProgress size={25}></CircularProgress>
+          </Box>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="total" fill={theme.palette.primary.main} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </Paper>
     </Box>
   );

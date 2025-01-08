@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableHead,
@@ -11,65 +11,98 @@ import {
   Box,
   IconButton,
   TablePagination,
+  CircularProgress,
 } from "@mui/material";
 import { StyledTableCell } from "@/app/components/StyledTitleCell/StyledTitleCell";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InventoryIcon from "@mui/icons-material/Inventory";
 import { useRouter } from "next/navigation";
 import {
   INITIAL_ROWS_PER_PAGE,
   ROWS_PER_PAGE_OPTIONS,
 } from "@/conf/generalValues";
+import AlertDialog from "@/app/components/AlertDialog/AlertDialog";
 
-interface IOrder {
-  id: number;
-  date: string;
-  total: number;
+interface IProducts {
+  _id: string;
+  name: string;
+  description: string;
 }
 
-interface ICategory {
-  id: number;
-  orders: IOrder[];
+interface IOrder {
+  _id: string;
+  date: string;
+  total: number;
+  products: IProducts[];
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<ICategory[]>([
-    {
-      id: 1,
-      orders: [
-        { id: 1, date: "2023-12-01", total: 100.5 },
-        { id: 2, date: "2023-12-02", total: 150.75 },
-      ],
-    },
-    {
-      id: 2,
-      orders: [{ id: 3, date: "2023-12-03", total: 200 }],
-    },
-  ]);
-
+  const router = useRouter();
+  const [orders, setOrders] = useState<IOrder[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actualPage, setActualPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(INITIAL_ROWS_PER_PAGE);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const router = useRouter();
+  const handleConfirm = () => {
+    handleDeleteProduct(selectedId);
+  };
+
+  async function handleDeleteProduct(selectedId: string | null) {
+    if (!selectedId) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/orders/${selectedId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        fetchOrders();
+      } else {
+        console.error("Erro ao excluir o ordem");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir o ordem", error);
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders();
+  }, [actualPage, rowsPerPage]);
+
+  async function fetchOrders() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/orders?page=${
+          actualPage + 1
+        }&limit=${rowsPerPage}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.data);
+        setTotalItems(data.total);
+      } else {
+        console.error("Erro ao buscar os dados dos pedidos");
+      }
+    } catch (error) {
+      console.error("Erro na chamada da API:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleAddCategory = (): void => {
     router.push("/pages/orders/new");
   };
 
-  const handleViewOrders = (categoryId: number): void => {
-    console.log(`Visualizando pedidos da categoria ${categoryId}`);
-  };
-
-  const handleEditCategory = (categoryId: number): void => {
-    router.push(`/pages/orders/${categoryId}`);
-  };
-
-  const handleDeleteCategory = (categoryId: number): void => {
-    if (confirm("Tem certeza que deseja deletar este item?")) {
-      setOrders(orders.filter((category) => category.id !== categoryId));
-      alert(`Categoria ${categoryId} deletada!`);
-    }
+  const handleEditOrder = (orderId: string): void => {
+    router.push(`/pages/orders/${orderId}`);
   };
 
   const handleChangePage = (
@@ -85,11 +118,6 @@ export default function OrdersPage() {
     setRowsPerPage(parseInt(event.target.value, 10));
     setActualPage(0);
   };
-
-  const paginatedOrders = orders.slice(
-    actualPage * rowsPerPage,
-    actualPage * rowsPerPage + rowsPerPage
-  );
 
   return (
     <div>
@@ -116,38 +144,43 @@ export default function OrdersPage() {
             <StyledTableCell>Ação</StyledTableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
-          {paginatedOrders.map((category) =>
-            category.orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.id}</TableCell>
+        {isLoading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={5} align="center" style={{ height: "200px" }}>
+                <CircularProgress size={30} />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        ) : (
+          <TableBody>
+            {orders.map((order) => (
+              <TableRow key={order._id}>
+                <TableCell>{order._id}</TableCell>
                 <TableCell>{order.date}</TableCell>
                 <TableCell>{order.total.toFixed(2)}</TableCell>
-                <TableCell>{category.orders.length}</TableCell>
+                <TableCell>{order.products.length}</TableCell>
                 <TableCell sx={{ width: "20%" }}>
                   <IconButton
-                    color="default"
-                    onClick={() => handleViewOrders(category.id)}
-                  >
-                    <InventoryIcon />
-                  </IconButton>
-                  <IconButton
                     color="primary"
-                    onClick={() => handleEditCategory(category.id)}
+                    onClick={() => handleEditOrder(order._id)}
                   >
                     <EditIcon />
                   </IconButton>
                   <IconButton
                     color="secondary"
-                    onClick={() => handleDeleteCategory(category.id)}
+                    onClick={() => {
+                      setSelectedId(order._id);
+                      setOpenDialog(true);
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
+            ))}
+          </TableBody>
+        )}
       </Table>
       <TablePagination
         labelRowsPerPage={"Itens por página"}
@@ -156,11 +189,18 @@ export default function OrdersPage() {
         }
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         component="div"
-        count={orders.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={actualPage}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <AlertDialog
+        title="Excluir Pedido"
+        text="Deseja realmente excluir o Pedido ?"
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirm}
       />
     </div>
   );
