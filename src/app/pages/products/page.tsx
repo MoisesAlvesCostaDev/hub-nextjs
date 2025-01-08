@@ -85,7 +85,10 @@ export default function ProductsPage() {
     }
   }
 
-  const handleSnackbarClose = (_, reason?: string) => {
+  const handleSnackbarClose = (
+    event: React.SyntheticEvent | Event,
+    reason?: string
+  ) => {
     if (reason === "clickaway") return;
     setSnackbarOpen(false);
   };
