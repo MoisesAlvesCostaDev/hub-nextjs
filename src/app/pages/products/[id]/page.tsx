@@ -10,30 +10,29 @@ import {
   Typography,
   IconButton,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 interface ICategories {
-  id: string;
+  _id: string;
   name: string;
 }
 
 interface IFormData {
   name: string;
   description: string;
-  categories: ICategories[];
+  categories: string[];
   price: number;
-  imageUrl: string | File;
+  imageUrl: File | null;
 }
 
-export default function EditProductForm({
-  productId,
-}: {
-  readonly productId: string;
-}) {
+export default function EditProductForm() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id;
 
   const {
     register,
@@ -43,61 +42,68 @@ export default function EditProductForm({
   } = useForm<IFormData>();
 
   const [availableCategories, setAvailableCategories] = useState<ICategories[]>(
-    [
-      { id: "1", name: "Categoria 1" },
-      { id: "2", name: "Categoria 2" },
-      { id: "3", name: "Categoria 3" },
-    ]
+    []
   );
-
   const [selectedCategories, setSelectedCategories] = useState<ICategories[]>(
     []
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchProductData = async () => {
-      const productData = {
-        name: "Produto Exemplo",
-        description: "Descrição do Produto Exemplo",
-        price: 99.99,
-        imageUrl: "https://via.placeholder.com/100",
-        categories: [
-          { id: "1", name: "Categoria 1" },
-          { id: "3", name: "Categoria 3" },
-        ],
-      };
+  const fetchProductData = async () => {
+    setIsLoading(true);
+    try {
+      const productResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products/${id}`
+      );
+      if (!productResponse.ok) {
+        throw new Error("Erro ao buscar dados do produto");
+      }
+      const productData = await productResponse.json();
 
       setValue("name", productData.name);
       setValue("description", productData.description);
       setValue("price", productData.price);
       setImagePreview(productData.imageUrl);
-
       setSelectedCategories(productData.categories);
 
-      setAvailableCategories((prev) =>
-        prev.filter(
-          (category) =>
+      const categoriesResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories`
+      );
+      if (!categoriesResponse.ok) {
+        throw new Error("Erro ao buscar categorias");
+      }
+      const categoriesData = await categoriesResponse.json();
+
+      setAvailableCategories(
+        categoriesData.data.filter(
+          (cat: ICategories) =>
             !productData.categories.find(
-              (selected) => selected.id === category.id
+              (sel: ICategories) => sel._id === cat._id
             )
         )
       );
-    };
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProductData();
-  }, [productId, setValue]);
+  }, []);
 
   const handleAddCategory = (category: ICategories) => {
     setAvailableCategories(
-      availableCategories.filter((c) => c.id !== category.id)
+      availableCategories.filter((c) => c._id !== category._id)
     );
     setSelectedCategories([...selectedCategories, category]);
   };
 
   const handleRemoveCategory = (category: ICategories) => {
     setSelectedCategories(
-      selectedCategories.filter((c) => c.id !== category.id)
+      selectedCategories.filter((c) => c._id !== category._id)
     );
     setAvailableCategories([...availableCategories, category]);
   };
@@ -110,25 +116,51 @@ export default function EditProductForm({
     }
   };
 
-  const onSubmit = (data: IFormData) => {
-    const finalData = {
-      ...data,
-      categories: selectedCategories,
-    };
-    console.log("Produto atualizado:", finalData);
-    alert("Produto atualizado com sucesso!");
-    router.push("/pages/products");
+  const onSubmit = async (data: IFormData) => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("description", data.description);
+    formData.append("price", String(data.price));
+    formData.append(
+      "categories",
+      JSON.stringify(selectedCategories.map((c) => c._id))
+    );
+    if (data.imageUrl) {
+      formData.append("file", data.imageUrl);
+    }
+
+    console.log("formData", formData);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products/${id}`,
+        {
+          method: "PATCH",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao atualizar o produto");
+      }
+
+      router.push("/pages/products");
+    } catch (error) {
+      console.error("Erro ao atualizar produto:", error);
+      alert("Erro ao atualizar produto");
+    }
   };
 
-  return (
+  return isLoading ? (
+    <Box display="flex" justifyContent="center" marginTop={4}>
+      <CircularProgress />
+    </Box>
+  ) : (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        gap={2}
-        marginBottom={3}
-      >
+      <Typography variant="h4" gutterBottom>
+        Editar Produto
+      </Typography>
+      <Box display="flex" gap={2} marginBottom={3}>
         <Box flex={1}>
           <Typography variant="caption">Nome do Produto</Typography>
           <input
@@ -178,7 +210,7 @@ export default function EditProductForm({
           <Box marginTop={2}>
             <img
               src={imagePreview}
-              alt="Imagem"
+              alt="Imagem do Produto"
               style={{ width: "100px", height: "100px", objectFit: "cover" }}
             />
           </Box>
@@ -188,13 +220,7 @@ export default function EditProductForm({
       <Box display="flex" gap={4}>
         <Box flex={1}>
           <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
-              style={{
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
-            >
+            <Typography variant="subtitle2" textAlign="center">
               Categorias Disponíveis
             </Typography>
           </Paper>
@@ -203,37 +229,32 @@ export default function EditProductForm({
             style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
           >
             <List>
-              {availableCategories.map((category) => (
-                <ListItem
-                  key={category.id}
-                  secondaryAction={
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleAddCategory(category)}
-                    >
-                      <AddIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={category.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
-                </ListItem>
-              ))}
+              {availableCategories.length > 0 ? (
+                availableCategories.map((category) => (
+                  <ListItem
+                    key={category._id}
+                    secondaryAction={
+                      <IconButton
+                        color="primary"
+                        onClick={() => handleAddCategory(category)}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText primary={category.name} />
+                  </ListItem>
+                ))
+              ) : (
+                <Typography>Nenhuma categoria</Typography>
+              )}
             </List>
           </Paper>
         </Box>
 
         <Box flex={1}>
           <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
-              style={{
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
-            >
+            <Typography variant="subtitle2" textAlign="center">
               Categorias Selecionadas
             </Typography>
           </Paper>
@@ -244,7 +265,7 @@ export default function EditProductForm({
             <List>
               {selectedCategories.map((category) => (
                 <ListItem
-                  key={category.id}
+                  key={category._id}
                   secondaryAction={
                     <IconButton
                       color="secondary"
@@ -254,10 +275,7 @@ export default function EditProductForm({
                     </IconButton>
                   }
                 >
-                  <ListItemText
-                    primary={category.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
+                  <ListItemText primary={category.name} />
                 </ListItem>
               ))}
             </List>

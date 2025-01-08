@@ -1,6 +1,5 @@
 "use client";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Box,
@@ -10,22 +9,24 @@ import {
   Typography,
   IconButton,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 
 interface ICategories {
-  id: string;
+  _id: string;
   name: string;
 }
 
 interface IFormData {
   name: string;
   description: string;
-  categories: ICategories[];
+  categories: string[];
   price: number;
-  imageUrl: string | File;
+  imageUrl: File | null;
 }
 
 export default function ProductForm() {
@@ -39,30 +40,48 @@ export default function ProductForm() {
   } = useForm<IFormData>();
 
   const [availableCategories, setAvailableCategories] = useState<ICategories[]>(
-    [
-      { id: "1", name: "Categoria 1" },
-      { id: "2", name: "Categoria 2" },
-      { id: "3", name: "Categoria 3" },
-    ]
+    []
   );
-
   const [selectedCategories, setSelectedCategories] = useState<ICategories[]>(
     []
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const handleAddProduct = (product: ICategories) => {
-    setAvailableCategories(
-      availableCategories.filter((p) => p.id !== product.id)
-    );
-    setSelectedCategories([...selectedCategories, product]);
+  const fetchCategories = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories`
+      );
+      if (!response.ok) {
+        throw new Error("Erro ao buscar categorias");
+      }
+      const data = await response.json();
+      setAvailableCategories(data.data);
+    } catch (error) {
+      console.error("Erro ao carregar categorias:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRemoveProduct = (product: ICategories) => {
-    setSelectedCategories(
-      selectedCategories.filter((p) => p.id !== product.id)
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handleAddCategory = (category: ICategories) => {
+    setAvailableCategories(
+      availableCategories.filter((c) => c._id !== category._id)
     );
-    setAvailableCategories([...availableCategories, product]);
+    setSelectedCategories([...selectedCategories, category]);
+  };
+
+  const handleRemoveCategory = (category: ICategories) => {
+    setSelectedCategories(
+      selectedCategories.filter((c) => c._id !== category._id)
+    );
+    setAvailableCategories([...availableCategories, category]);
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,24 +92,44 @@ export default function ProductForm() {
     }
   };
 
-  const onSubmit = (data: IFormData) => {
-    const finalData = {
-      ...data,
-      categories: selectedCategories,
-    };
-    console.log("Produto criado:", finalData);
-    alert("Produto criado com sucesso!");
+  const onSubmit = async (data: IFormData) => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("description", data.description);
+    formData.append("price", String(data.price));
+    formData.append(
+      "categories",
+      JSON.stringify(selectedCategories.map((category) => category._id))
+    );
+    if (data.imageUrl) {
+      formData.append("file", data.imageUrl);
+    }
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao criar o produto");
+      }
+      router.push("/pages/products");
+    } catch (error) {
+      console.error("Erro ao criar o produto:", error);
+      alert("Erro ao criar o produto");
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        gap={2}
-        marginBottom={3}
-      >
+      <Typography variant="h4" gutterBottom>
+        Adicionar Produto
+      </Typography>
+      <Box display="flex" gap={2} marginBottom={3}>
         <Box>
           <Typography variant="caption">Nome do Produto</Typography>
           <input
@@ -102,7 +141,7 @@ export default function ProductForm() {
           )}
         </Box>
 
-        <Box>
+        <Box flex={1}>
           <Typography variant="caption">Descrição</Typography>
           <input
             {...register("description", {
@@ -128,17 +167,19 @@ export default function ProductForm() {
         </Box>
       </Box>
 
-      <Box marginBottom={3}>
-        <Typography variant="caption">Imagem do Produto</Typography>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          style={{ display: "block" }}
-        />
+      <Box display={"flex"} alignItems={"center"} marginBottom={3}>
+        <Box>
+          <Typography variant="caption">Imagem do Produto</Typography>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            style={{ display: "block" }}
+          />
+        </Box>
+
         {imagePreview && (
           <Box marginTop={2}>
-            <Typography variant="caption">Pré-visualização:</Typography>
             <img
               src={imagePreview}
               alt="Pré-visualização da imagem"
@@ -148,85 +189,87 @@ export default function ProductForm() {
         )}
       </Box>
 
-      <Box display="flex" gap={4}>
-        <Box flex={1}>
-          <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
-              style={{
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
+      {isLoading ? (
+        <CircularProgress />
+      ) : (
+        <Box display="flex" gap={4}>
+          <Box flex={1}>
+            <Paper elevation={2}>
+              <Typography
+                variant="subtitle2"
+                style={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Categorias Disponíveis
+              </Typography>
+            </Paper>
+            <Paper
+              elevation={2}
+              style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
             >
-              Categorias Disponíveis
-            </Typography>
-          </Paper>
-          <Paper
-            elevation={2}
-            style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
-          >
-            <List>
-              {availableCategories.map((category) => (
-                <ListItem
-                  key={category.id}
-                  secondaryAction={
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleAddProduct(category)}
+              <List>
+                {availableCategories.length > 0 ? (
+                  availableCategories.map((category) => (
+                    <ListItem
+                      key={category._id}
+                      secondaryAction={
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleAddCategory(category)}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      }
                     >
-                      <AddIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={category.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Box>
+                      <ListItemText primary={category.name} />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography>Nenhuma categoria</Typography>
+                )}
+              </List>
+            </Paper>
+          </Box>
 
-        <Box flex={1}>
-          <Paper elevation={2}>
-            <Typography
-              variant="subtitle2"
-              style={{
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
+          <Box flex={1}>
+            <Paper elevation={2}>
+              <Typography
+                variant="subtitle2"
+                style={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Categorias Selecionadas
+              </Typography>
+            </Paper>
+            <Paper
+              elevation={3}
+              style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
             >
-              Categorias Selecionadas
-            </Typography>
-          </Paper>
-          <Paper
-            elevation={3}
-            style={{ padding: "10px", maxHeight: "300px", overflowY: "auto" }}
-          >
-            <List>
-              {selectedCategories.map((category) => (
-                <ListItem
-                  key={category.id}
-                  secondaryAction={
-                    <IconButton
-                      color="secondary"
-                      onClick={() => handleRemoveProduct(category)}
-                    >
-                      <RemoveIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={category.name}
-                    slotProps={{ primary: { fontSize: "small" } }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
+              <List>
+                {selectedCategories.map((category) => (
+                  <ListItem
+                    key={category._id}
+                    secondaryAction={
+                      <IconButton
+                        color="secondary"
+                        onClick={() => handleRemoveCategory(category)}
+                      >
+                        <RemoveIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText primary={category.name} />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <Box marginTop={4} display="flex" justifyContent="space-between">
         <Button

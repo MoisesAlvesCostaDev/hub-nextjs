@@ -117,6 +117,9 @@ export default function CategoryForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
+      <Typography variant="h4" gutterBottom>
+        Adicionar Categorias
+      </Typography>
       <Box
         display="flex"
         justifyContent="space-between"

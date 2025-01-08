@@ -26,13 +26,22 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
         color: "white",
         width: "250px",
         height: "150px",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
-      <CardContent>
+      <CardContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>
-        <Typography variant="h4"> {value}</Typography>
+        <Typography variant="h4">{value}</Typography>
       </CardContent>
     </Card>
   );

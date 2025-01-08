@@ -129,6 +129,9 @@ export default function EditCategory() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
+      <Typography variant="h4" gutterBottom>
+        Editar Categorias
+      </Typography>
       <Box
         display="flex"
         justifyContent="space-between"
