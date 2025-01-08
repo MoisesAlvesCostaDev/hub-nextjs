@@ -120,7 +120,7 @@ export default function EditProductForm() {
     const formData = new FormData();
     formData.append("name", data.name);
     formData.append("description", data.description);
-    formData.append("price", String(data.price));
+    formData.append("price", String(data.price).replace(",", "."));
     formData.append(
       "categories",
       JSON.stringify(selectedCategories.map((c) => c._id))
@@ -128,8 +128,6 @@ export default function EditProductForm() {
     if (data.imageUrl) {
       formData.append("file", data.imageUrl);
     }
-
-    console.log("formData", formData);
 
     try {
       const response = await fetch(
@@ -188,8 +186,15 @@ export default function EditProductForm() {
         <Box flex={1}>
           <Typography variant="caption">Preço</Typography>
           <input
-            type="number"
-            {...register("price", { required: "Preço é obrigatório" })}
+            type="text"
+            {...register("price", {
+              required: "Preço é obrigatório",
+              validate: (value) => {
+                const stringValue = String(value);
+                const convertedValue = stringValue.replace(",", ".");
+                return !isNaN(parseFloat(convertedValue)) || "Preço inválido";
+              },
+            })}
             style={{ width: "100%" }}
           />
           {errors.price && (
